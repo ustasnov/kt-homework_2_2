@@ -9,17 +9,72 @@ data class Likes(
     var count: Int = 0
 )
 
+data class Comments(
+    val count: Int = 0,
+    val canPost: Boolean = true,
+    val groupsCanPost: Boolean = true,
+    val canClose: Boolean = true,
+    val canOpen: Boolean = true
+)
+
+data class Reposts(
+    val count: Int = 0,
+    val userReposted: Boolean = true
+)
+
+data class Views(
+    val count: Int = 0
+)
+
+data class PostSource(
+    val type: String = "vk",
+    val platform: String = "android",
+    val data: String = "profile_activity",
+    val url: String = ""
+)
+
+data class Geo(
+    val type: String = "",
+    val coordinates: String = "",
+    val place: String = ""
+)
+
+data class Repost(
+    val id: Int = 0,
+    val ownerId: Int = 0,
+    val fromId: Int = 0,
+    val date: LocalDateTime,
+    val original: Post?,
+    val likes: Int
+)
+
 data class Post(
     val id: Int = 0,
-    val ownerId: Int,
-    val fromId: Int,
-    val createdBy: Int,
-    val text: String,
+    val ownerId: Int = 0,
+    val fromId: Int = 0,
+    val createdBy: Int = 0,
+    val text: String = "",
     val date: LocalDateTime,
+    val replyOwnerId: Int = 0,
+    val replyPostId: Int = 0,
     val friendsOnly: Boolean = false,
-    val replyOwnerId: Int,
-    val replyPostId: Int,
-    var likes: Likes = Likes()
+    val comments: Comments? = null,
+    val copyright: String = "",
+    var likes: Likes = Likes(),
+    val reposts: Reposts? = null,
+    val views: Views = Views(),
+    val postType: String = "post",
+    val postSource: PostSource = PostSource(),
+    val geo: Geo? = null,
+    val signerId: Int = 0,
+    val copyHistory: Array<Repost> = emptyArray(),
+    val canPin: Boolean = true,
+    val canDelete: Boolean = true,
+    val canEdit: Boolean = true,
+    val isPinned: Boolean = false,
+    val markedAsAds: Boolean = false,
+    val isFavorite: Boolean = false,
+    val postponedId: Int = 0
 )
 
 object WallService {
