@@ -118,4 +118,42 @@ class WallServiceTest {
 
         assertFalse(WallService.update(post))
     }
+
+    @Test
+    fun createComment() {
+        val post = Post(
+            ownerId = 1,
+            fromId = 1,
+            createdBy = 1,
+            text = "First post",
+            date = LocalDateTime.now(),
+            friendsOnly = false,
+            replyOwnerId = 1,
+            replyPostId = 1
+        )
+
+        WallService.add(post)
+
+        val comment = Comment(1, 1, 1, LocalDateTime.now(), "Комментарий к посту 1")
+        assertTrue(comment === WallService.createComment(1, comment))
+    }
+
+    @Test(expected = PostNotFoundException::class)
+    fun createCommentShouldThrow() {
+        val post = Post(
+            ownerId = 1,
+            fromId = 1,
+            createdBy = 1,
+            text = "First post",
+            date = LocalDateTime.now(),
+            friendsOnly = false,
+            replyOwnerId = 1,
+            replyPostId = 1
+        )
+
+        WallService.add(post)
+
+        val comment = Comment(1, 3, 1, LocalDateTime.now(), "Комментарий к посту 3")
+        WallService.createComment(3, comment)
+    }
 }

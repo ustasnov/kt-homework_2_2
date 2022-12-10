@@ -1,5 +1,6 @@
 package ru.netology
 
+import java.lang.RuntimeException
 import java.time.LocalDateTime
 
 data class Likes(
@@ -78,8 +79,40 @@ data class Post(
     var attachments: Array<Attachment> = emptyArray()
 )
 
+data class Donut(
+    val isDon: Boolean = false,
+    val placeholder: String = ""
+)
+
+data class CommentThread(
+    val count: Int = 0,
+    val items: Array<Comment> = emptyArray(),
+    val canPost: Boolean = true,
+    val showReplyButton: Boolean = true,
+    val groupsCanPost: Boolean = true
+)
+
+data class Comment(
+    val id: Int = 0,
+    val postId: Int = 0,
+    val fromId: Int = 0,
+    val date: LocalDateTime,
+    val text: String = "",
+    val donut: Donut? = null,
+    val replyToUser: Int = 0,
+    val replyToComment: Int = 0,
+    var attachments: Array<Attachment> = emptyArray(),
+    var parentStack: Array<Int> = emptyArray(),
+    val thread: CommentThread =  CommentThread()
+)
+
+class PostNotFoundException(
+    override val message: String?
+): RuntimeException()
+
 object WallService {
     var posts = emptyArray<Post>()
+    var comments = emptyArray<Comment>()
 
     fun add(post: Post): Post {
         posts += post.copy(id = posts.lastIndex + 2)
@@ -96,6 +129,16 @@ object WallService {
         return false
     }
 
+    fun createComment(postId: Int, comment: Comment): Comment {
+        for ((index, curPost) in posts.withIndex()) {
+            if (curPost.id == postId) {
+                comments += comment
+                return comment
+            }
+        }
+        throw PostNotFoundException("Пост с id = $postId не найден!")
+    }
+
     fun clear() {
         posts = emptyArray()
     }
@@ -110,6 +153,13 @@ fun printPosts(title: String) {
             println("  ${index + 1}: ${attachment}")
         }
         println()
+    }
+}
+
+fun printComments(title: String) {
+    println(title)
+    for ((index, curComment) in WallService.comments.withIndex()) {
+        println("  ${index + 1}: ${curComment}")
     }
 }
 
@@ -170,5 +220,19 @@ fun main() {
 
     if (WallService.update(post)) {
         printPosts("Массив постов после изменения поста с id == 1:\n-----------------------------------------------")
+    }
+
+    WallService.createComment(1, Comment(1, 1, 1, LocalDateTime.now(), "Комментарий к посту 1"))
+    WallService.createComment(1, Comment(2, 1, 2, LocalDateTime.now(), "Комментарий к посту 1"))
+    WallService.createComment(2, Comment(1, 2, 3, LocalDateTime.now(), "Комментарий к посту 2"))
+    WallService.createComment(2, Comment(2, 2, 1, LocalDateTime.now(), "Комментарий к посту 2"))
+
+    printComments("Комментарии к постам: \n---------------------")
+
+    println("\nПытаемся добавить комментарий к несуществующему посту c id == 3:")
+    try {
+        WallService.createComment(3, Comment(1, 3, 1, LocalDateTime.now(), "Комментарий к посту 3"))
+    } catch (e: PostNotFoundException) {
+        println(e.message)
     }
 }
