@@ -1,7 +1,7 @@
 package ru.netology
 
-interface GenericInterface {
-    var id: Int;
+interface GenericElementInterface {
+    public var id: Int;
 }
 
 interface GenericServiceInterface<T> {
