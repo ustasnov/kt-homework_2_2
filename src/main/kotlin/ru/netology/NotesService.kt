@@ -13,19 +13,19 @@ interface GenericServiceInterface<T> {
     fun clear()
 }
 
-open class GenericService<T> : GenericServiceInterface<T> {
-    var elements: MutableMap<Long, T> = mutableMapOf()
-    var deletedElements: MutableMap<Long, T> = mutableMapOf()
+open class GenericService<T : Any> : GenericServiceInterface<T> {
+    private var elements: MutableMap<Long, T> = mutableMapOf()
+    private var deletedElements: MutableMap<Long, T> = mutableMapOf()
     var maxIndex: Long = 0
 
     override fun add(element: T): Long {
-        elements.put(++maxIndex, element)
+        elements[++maxIndex] = element
         return maxIndex
     }
 
     override fun delete(id: Long): Boolean {
         return if (elements.containsKey(id)) {
-            deletedElements.put(id, elements[id]!!)
+            deletedElements[id] = elements[id]!!
             elements.remove(id)
             true
         } else {
@@ -34,7 +34,7 @@ open class GenericService<T> : GenericServiceInterface<T> {
     }
 
     override fun read(): MutableMap<Long, T> {
-        var result: MutableMap<Long, T> = mutableMapOf()
+        val result: MutableMap<Long, T> = mutableMapOf()
         result.putAll(elements)
         return result
     }
@@ -45,7 +45,7 @@ open class GenericService<T> : GenericServiceInterface<T> {
 
     override fun restore(id: Long): Boolean {
         return if (deletedElements.containsKey(id)) {
-            elements.put(id, deletedElements[id]!!)
+            elements[id] = deletedElements[id]!!
             deletedElements.remove(id)
             true
         } else {
@@ -56,10 +56,11 @@ open class GenericService<T> : GenericServiceInterface<T> {
     override fun clear() {
         deletedElements.clear()
         elements.clear()
+        maxIndex = 0
     }
 
     override fun update(id: Long, element: T): Boolean {
-        return if (elements.containsValue(element)) {
+        return if (elements.containsKey(id)) {
             elements.replace(id, element)
             true
         } else {
@@ -85,7 +86,7 @@ data class Note(
     val text: String = "",
     val privacy: Int = 0,
     val commentPrivacy: Int = 0,
-    var comments: GenericService<NoteComment> = GenericService<NoteComment>()
+    var comments: GenericService<NoteComment> = GenericService()
 )
 
 class NotFoundException(
@@ -125,7 +126,7 @@ object NotesService {
 
     fun printNotes() {
         println("\nСписок заметок:\n---------------")
-        var notesMap = notes.read()
+        val notesMap = notes.read()
         for (note in notesMap) {
             println("${note.value}")
             printComments(note.value.id)
@@ -157,7 +158,7 @@ object NotesService {
     fun editComment(noteId: Long, commentId: Long, message: String): Boolean {
         var note: Note? = notes.getById(noteId) ?: throw NotFoundException("Заметка с id == $noteId не найдена!")
         if (note != null) {
-            val comment: NoteComment? = note.comments.getById(commentId)
+            var comment: NoteComment? = note.comments.getById(commentId)
                 ?: throw NotFoundException("Комментарий с id == $commentId к заметке с id == $noteId не найден!")
             if (comment != null) {
                 return note.comments.update(
