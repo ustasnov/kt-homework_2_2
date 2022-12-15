@@ -3,10 +3,75 @@ package ru.netology
 import java.lang.RuntimeException
 import java.time.LocalDateTime
 
+interface GenericServiceInterface<T> {
+    fun add(element: T): Long
+    fun delete(id: Long): Boolean
+    fun update(id: Long, element: T): Boolean
+    fun read(): MutableMap<Long, T>
+    fun getById(id: Long): T?
+    fun restore(id: Long): Boolean
+    fun clear()
+}
+
+open class GenericService<T> : GenericServiceInterface<T> {
+    var elements: MutableMap<Long, T> = mutableMapOf()
+    var deletedElements: MutableMap<Long, T> = mutableMapOf()
+    var maxIndex: Long = 0
+
+    override fun add(element: T): Long {
+        elements.put(++maxIndex, element)
+        return maxIndex
+    }
+
+    override fun delete(id: Long): Boolean {
+        return if (elements.containsKey(id)) {
+            deletedElements.put(id, elements[id]!!)
+            elements.remove(id)
+            true
+        } else {
+            false
+        }
+    }
+
+    override fun read(): MutableMap<Long, T> {
+        var result: MutableMap<Long, T> = mutableMapOf()
+        result.putAll(elements)
+        return result
+    }
+
+    override fun getById(id: Long): T? {
+        return elements[id]
+    }
+
+    override fun restore(id: Long): Boolean {
+        return if (deletedElements.containsKey(id)) {
+            elements.put(id, deletedElements[id]!!)
+            deletedElements.remove(id)
+            true
+        } else {
+            false
+        }
+    }
+
+    override fun clear() {
+        deletedElements.clear()
+        elements.clear()
+    }
+
+    override fun update(id: Long, element: T): Boolean {
+        return if (elements.containsValue(element)) {
+            elements.replace(id, element)
+            true
+        } else {
+            false
+        }
+    }
+}
+
 data class NoteComment(
-    val id: Int = 0,
+    val id: Long = 0,
     val uId: Int = 0,
-    val nId: Int = 0,
+    val nId: Long = 0,
     val oId: Int = 0,
     val date: LocalDateTime,
     val message: String,
@@ -15,72 +80,55 @@ data class NoteComment(
 )
 
 data class Note(
-    val id: Int = 0,
+    val id: Long = 0,
     val title: String = "",
     val text: String = "",
     val privacy: Int = 0,
     val commentPrivacy: Int = 0,
-    var comments: MutableList<NoteComment> = mutableListOf()
+    var comments: GenericService<NoteComment> = GenericService<NoteComment>()
 )
 
 class NotFoundException(
     override val message: String?
-): RuntimeException()
+) : RuntimeException()
 
 object NotesService {
-    private var notes: MutableList<Note> = mutableListOf()
+    private var notes = GenericService<Note>()
 
-    fun add(title: String, text: String, privacy: Int = 0, commentPrivacy: Int = 0): Int {
-        notes += Note(notes.lastIndex + 2, title, text, privacy, commentPrivacy)
-        return notes.last().id
+    fun add(title: String, text: String, privacy: Int = 0, commentPrivacy: Int = 0): Long {
+        return notes.add(Note(notes.maxIndex + 1, title, text, privacy, commentPrivacy))
     }
 
-    fun edit(noteId: Int, title: String, text: String, privacy: Int, commentPrivacy: Int): Boolean {
-        for ((index, curNote) in notes.withIndex()) {
-            if (curNote.id == noteId) {
-                notes[index] = curNote.copy(
-                    id = noteId,
-                    title = title,
-                    text = text,
-                    privacy = privacy,
-                    commentPrivacy = commentPrivacy
-                )
-                return true
-            }
+    fun edit(noteId: Long, title: String, text: String, privacy: Int, commentPrivacy: Int): Boolean {
+        return if (notes.update(noteId, Note(noteId, title, text, privacy, commentPrivacy))) {
+            true
+        } else {
+            throw NotFoundException("Заметка с id == $noteId не найдена!")
         }
-        throw NotFoundException("Заметка с id = $noteId не найдена!")
     }
 
-    fun delete(noteId: Int): Int {
-        for ((index, curNote) in notes.withIndex()) {
-            if (curNote.id == noteId) {
-                notes.removeAt(index)
-                return 1
-            }
+    fun delete(noteId: Long): Boolean {
+        return if (notes.delete(noteId)) {
+            true
+        } else {
+            throw NotFoundException("Заметка с id == $noteId не найдена!")
         }
-        throw NotFoundException("Заметка с id = $noteId не найдена!")
     }
 
-    fun getById(noteId: Int): Note {
-        for ((index, curNote) in notes.withIndex()) {
-            if (curNote.id == noteId) {
-                return curNote.copy()
-            }
-        }
-        throw NotFoundException("Заметка с id = $noteId не найдена!")
+    fun getById(noteId: Long): Note {
+        return notes.getById(noteId) ?: throw NotFoundException("Заметка с id == $noteId не найдена!")
     }
 
-    fun getNotes(): MutableList<Note> {
-        val result = ArrayList<Note>()
-        notes.toCollection(result)
-        return result
+    fun getNotes(): MutableMap<Long, Note> {
+        return notes.read()
     }
 
     fun printNotes() {
         println("\nСписок заметок:\n---------------")
-        for ((index, curNote) in notes.withIndex()) {
-            println(curNote)
-            printComments(curNote.id)
+        var notesMap = notes.read()
+        for (note in notesMap) {
+            println("${note.value}")
+            printComments(note.value.id)
         }
     }
 
@@ -88,106 +136,79 @@ object NotesService {
         notes.clear()
     }
 
-    fun createComment(noteId: Int, ownerId: Int, replyTo: Int, message: String): Int {
-        for ((index, curNote) in notes.withIndex()) {
-            if (curNote.id == noteId) {
-                curNote.comments.add(NoteComment(curNote.comments.lastIndex + 2, 1, curNote.id, ownerId, LocalDateTime.now(), message, replyTo))
-                return 1
-            }
+    fun createComment(noteId: Long, ownerId: Int, replyTo: Int, message: String): Long {
+        var note: Note? = notes.getById(noteId) ?: throw NotFoundException("Заметка с id == $noteId не найдена!")
+        if (note != null) {
+            return note.comments.add(
+                NoteComment(
+                    note.comments.maxIndex + 1,
+                    1,
+                    noteId,
+                    ownerId,
+                    LocalDateTime.now(),
+                    message,
+                    replyTo
+                )
+            )
         }
-        throw NotFoundException("Заметка с id = $noteId не найдена!")
+        return 0
     }
 
-    fun editComment(noteId: Int, commentId: Int, message: String): Boolean {
-        for ((index, curNote) in notes.withIndex()) {
-            if (curNote.id == noteId) {
-                for ((idx, comment) in curNote.comments.withIndex()) {
-                    if (commentId == comment.id) {
-                        return if (comment.deleted) {
-                            curNote.comments[idx] = comment.copy(message = message)
-                            true
-                        } else {
-                            false;
-                        }
-                    }
-                }
+    fun editComment(noteId: Long, commentId: Long, message: String): Boolean {
+        var note: Note? = notes.getById(noteId) ?: throw NotFoundException("Заметка с id == $noteId не найдена!")
+        if (note != null) {
+            val comment: NoteComment? = note.comments.getById(commentId)
+                ?: throw NotFoundException("Комментарий с id == $commentId к заметке с id == $noteId не найден!")
+            if (comment != null) {
+                return note.comments.update(
+                    commentId,
+                    NoteComment(commentId, comment.uId, noteId, comment.oId, comment.date, message, comment.replyTo)
+                )
+            }
+        }
+        return false
+    }
+
+    fun deleteComment(noteId: Long, commentId: Long): Boolean {
+        var note: Note? = notes.getById(noteId) ?: throw NotFoundException("Заметка с id == $noteId не найдена!")
+        if (note != null) {
+            val comment: NoteComment? = note.comments.getById(commentId)
+                ?: throw NotFoundException("Комментарий с id == $commentId к заметке с id == $noteId не найден!")
+            if (comment != null) {
+                return note.comments.delete(comment.id)
+            }
+        }
+        return false
+    }
+
+    fun getComments(noteId: Long): MutableMap<Long, NoteComment> {
+        var note: Note? = notes.getById(noteId) ?: throw NotFoundException("Заметка с id == $noteId не найдена!")
+        if (note != null) {
+            return note.comments.read()
+        }
+        return mutableMapOf()
+    }
+
+    fun printComments(noteId: Long) {
+        val comments = getComments(noteId)
+        if (comments.size == 0) {
+            println("  У заметки с id == $noteId нет комментариев")
+            return
+        }
+        println("  Комментарии к заметке с id == $noteId:")
+        for (comment in comments) {
+            println("  ${comment.value}")
+        }
+    }
+
+    fun restoreComment(noteId: Long, commentId: Long): Boolean {
+        var note: Note? = notes.getById(noteId) ?: throw NotFoundException("Заметка с id == $noteId не найдена!")
+        if (note != null) {
+            if (!note.comments.restore(commentId)) {
                 throw NotFoundException("Комментарий с id = $commentId к заметке с id = $noteId не найден!")
             }
+            return true
         }
-        throw NotFoundException("Заметка с id = $noteId не найдена!")
-    }
-
-    fun deleteComment(noteId: Int, commentId: Int): Boolean {
-        for ((index, curNote) in notes.withIndex()) {
-            if (curNote.id == noteId) {
-                for ((idx, comment) in curNote.comments.withIndex()) {
-                    if (commentId == comment.id) {
-                        return if (comment.deleted) {
-                            false
-                        } else {
-                            curNote.comments[idx] = comment.copy(deleted = true)
-                            true
-                        }
-                    }
-                }
-                throw NotFoundException("Комментарий с id = $commentId к заметке с id = $noteId не найден!")
-            }
-        }
-        throw NotFoundException("Заметка с id = $noteId не найдена!")
-    }
-
-    fun getComments(noteId: Int): MutableList<NoteComment> {
-        var result = mutableListOf<NoteComment>()
-        for ((index, curNote) in notes.withIndex()) {
-            if (curNote.id == noteId) {
-                for ((idx, comment) in curNote.comments.withIndex()) {
-                    if (!comment.deleted) {
-                        result.add(comment)
-                    }
-                }
-                return result
-            }
-        }
-        throw NotFoundException("Заметка с id = $noteId не найдена!")
-    }
-
-    fun printComments(noteId: Int) {
-        for ((index, curNote) in notes.withIndex()) {
-                if (curNote.id == noteId) {
-                    val noteComments = getComments(noteId)
-                    if (noteComments.size == 0) {
-                        println("  У заметки с id == $noteId нет комментариев")
-                        return
-                    }
-                    println("  Комментарии к заметке с id == $noteId:")
-                    for ((idx, comment) in noteComments.withIndex()) {
-                        if (!comment.deleted) {
-                            println("  $comment")
-                        }
-
-                    }
-                    return
-                }
-        }
-        throw NotFoundException("Заметка с id = $noteId не найдена!")
-    }
-
-    fun restoreComment(noteId: Int, commentId: Int): Boolean {
-        for ((index, curNote) in notes.withIndex()) {
-            if (curNote.id == noteId) {
-                for ((idx, comment) in curNote.comments.withIndex()) {
-                    if (commentId == comment.id) {
-                        return if (comment.deleted) {
-                            curNote.comments[idx] = comment.copy(deleted = false)
-                            true
-                        } else {
-                            false
-                        }
-                    }
-                }
-                throw NotFoundException("Комментарий с id = $commentId к заметке с id = $noteId не найден!")
-            }
-        }
-        throw NotFoundException("Заметка с id = $noteId не найдена!")
+        return false
     }
 }
