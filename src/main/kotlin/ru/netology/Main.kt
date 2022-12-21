@@ -3,6 +3,7 @@ package ru.netology
 import java.time.LocalDateTime
 
 fun main() {
+    /*
     var post = Post(
         ownerId = 1,
         fromId = 1,
@@ -95,4 +96,38 @@ fun main() {
     println("\nВосстановили комментарий с id == 1 у заметки с id == 2")
 
     NotesService.printNotes()
+
+     */
+
+    println("\nСервис чатов\n--------------")
+    ChatService.createMessage(1, "Сообщение 1 пользователю 1", false)
+    ChatService.createMessage(1, "Сообщение 2 от пользователя 1", true)
+    ChatService.createMessage(1, "Сообщение 3 пользователю 1", false)
+    ChatService.createMessage(1, "Сообщение 4 от пользователя 1", true)
+    ChatService.createMessage(2, "Сообщение 1 пользователю 2", false)
+    ChatService.createMessage(2, "Сообщение 2 от пользователя 2", true)
+    ChatService.createMessage(2, "Сообщение 3 пользователю 2", false)
+    ChatService.createMessage(2, "Сообщение 4 от пользователя 2", true)
+
+    ChatService.printChats()
+
+    val chat = ChatService.add()
+    println(ChatService.getLastMessages())
+
+    if (chat != null) ChatService.delete(chat.id)
+    //ChatService.printMessages(2, 2)
+
+    ChatService.editMessage(1, 3, "Отредактированное сообщение 3 пользователю 1", true)
+    ChatService.editMessage(1, 4, "Отредактированное сообщение 4 пользователю 1", true)
+
+    ChatService.printMessages(1, 2, false)
+
+    println("Количество непрочитанных чатов: ${ChatService.getUnreadChatsCount()}")
+
+    ChatService.deleteMessage(2, 1)
+    ChatService.deleteMessage(2, 2)
+    ChatService.deleteMessage(2, 3)
+    ChatService.deleteMessage(2, 4)
+
+    ChatService.printChats(false)
 }

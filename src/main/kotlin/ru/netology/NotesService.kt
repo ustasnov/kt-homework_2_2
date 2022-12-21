@@ -39,6 +39,16 @@ open class GenericService<T : Any> : GenericServiceInterface<T> {
         return result
     }
 
+    fun readToList(): MutableList<T> {
+        val result: MutableList<T> = mutableListOf()
+        result.addAll(elements.values)
+        return result
+    }
+
+    fun size(): Int {
+        return elements.size
+    }
+
     override fun getById(id: Long): T? {
         return elements[id]
     }
